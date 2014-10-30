@@ -4,10 +4,8 @@ include($$[NANOFLANN])
 include($$[EIGEN])
 StarlabTemplate(plugin)
 
-Release: LIBS += -L 4pcs_1.3/ANN/ReleaseLib
-Debug: LIBS += -L 4pcs_1.3/ANN/DebugLib
-
-LIBS += -lANN
+Release: LIBS += 4pcs_1.3/ANN/ReleaseLib/ANN.lib
+Debug: LIBS += 4pcs_1.3/ANN/DebugLib/ANN.lib
 
 HEADERS += filter_4pcs.h
 HEADERS += 4pcs_1.3/4pcs.h

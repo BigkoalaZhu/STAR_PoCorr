@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>fsc.png</file>
+    </qresource>
+</RCC>
