@@ -200,5 +200,16 @@ public:
             retval.push_back(ret_matches[i].first);
         return retval;
     }
+
+	template< class Point3 >
+    std::vector<double> ball_search_dist(Point3 query, double search_radius){
+        std::vector<double> retval;
+        double _query[3] = {query.x(), query.y(), query.z()};
+        KDResults ret_matches;
+        ball_search(_query, search_radius, ret_matches);
+        for(size_t i=0; i<ret_matches.size(); i++)
+            retval.push_back(ret_matches[i].secod);
+        return retval;
+    }
 /// @}
 };
