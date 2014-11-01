@@ -147,6 +147,18 @@ public:
             return match[0].first;
     }
     
+	double closest_dist(double query[3]){
+        assert(tree);
+    
+        KDResults match;
+        this->k_closest(query, 1, match);
+
+        if(!match.size())
+            return -1;
+        else
+			return match[0].second;
+    }
+
     Vector3& closest(double query[3]){
         assert(tree);
 
@@ -208,7 +220,7 @@ public:
         KDResults ret_matches;
         ball_search(_query, search_radius, ret_matches);
         for(size_t i=0; i<ret_matches.size(); i++)
-            retval.push_back(ret_matches[i].secod);
+            retval.push_back(ret_matches[i].second);
         return retval;
     }
 /// @}

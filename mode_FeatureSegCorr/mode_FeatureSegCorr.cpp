@@ -3,6 +3,7 @@
 #include "ModePluginDockWidget.h"
 #include "mode_FeatureSegCorr.h"
 #include "StarlabDrawArea.h"
+#include <fstream>
 
 
 
@@ -44,6 +45,14 @@ void FeatureSegCorr::setRadius(QString r)
 	radius = r.toDouble();
 }
 
+const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
+void writeToCSVfile(QString name, Eigen::MatrixXd matrix)
+{
+	std::ofstream file(name.toStdString().c_str());
+	file << matrix.format(CSVFormat);
+	file.close();
+}
+
 void FeatureSegCorr::setrunCalcHKS()
 {
 	// Initial point cloud data to KDtree
@@ -52,6 +61,13 @@ void FeatureSegCorr::setrunCalcHKS()
 	Eigen::Map<Eigen::Matrix3Xd> dst_normals((double *)(m1->vertex_normals().data()), 3, m1->n_vertices());
 	SurfaceMesh::VertexCoordinatesIterator vci(m1);
     NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
+
+	// Get Average distance
+	double avg = 0;
+	for (int i = 0; i < X.cols(); i++)
+		avg += kdtree.closest_dist(X.col(i).data());
+	avg = avg/X.cols();
+	radius = avg*radius;
 
 	// Do the ball search
 	double piece_radius = M_PI/4;
@@ -105,7 +121,50 @@ void FeatureSegCorr::setrunCalcHKS()
 		}
 		for (int j = 0; j < piece_num; j++)
 		{
-			
+			int piece_r = 0;
+			while(piece_r < piece_layer)
+			{
+				if(pieces(j,piece_r) == 0)
+					break;
+				piece_r++;
+			}
+			double tmpv = (4.0f/3.0f)*M_PI*pow(piece_r*radius/piece_layer,3)/piece_num;
+			volume[i] = volume[i] + tmpv;
 		}
+	}
+	
+	// Calculate Laplace Operator
+	int time_sq_num = 1024;
+	double t = radius*radius/4;
+	Eigen::MatrixXd Lp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	for (int j = 0; j < X.cols(); j++)
+		for (int k = j; k < X.cols(); k++)
+		{
+			double dist = (X.col(j) - X.col(k)).squaredNorm();
+			double l = (-1.0f/(pow(4*M_PI*t,1.5)*t))*(volume[k]/4.0f)*exp(dist/(4.0f*t));
+			Lp(j,k) = l;
+			Lp(k,j) = Lp(j,k);
+		}
+
+	// Calculate HKS k(x,x)
+	QVector<Eigen::VectorXd> HKST;
+	for (int i = 0; i < time_sq_num; i++)
+	{
+		double t = i + 1;
+		Eigen::VectorXd HKS = Eigen::VectorXd::Zero(X.cols());
+		writeToCSVfile("m.csv",LpT[i]);
+		Eigen::EigenSolver<Eigen::MatrixXd> esL(LpT[i]);
+		Eigen::VectorXd egval = esL.eigenvalues().col(0).real();
+		Eigen::MatrixXd egvec = esL.eigenvectors().real();
+		for (int j = 0; j < X.cols(); j++)
+		{
+			double h = 0;
+			for (int n = 0; n < X.cols(); n++)
+			{
+				h += exp(-egval(n)*t)*egvec.col(n).dot(egvec.col(n));
+			}
+			HKS[j] = h;
+		}
+		HKST.push_back(HKS);
 	}
 }
