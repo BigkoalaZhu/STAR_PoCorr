@@ -8,10 +8,13 @@ StarlabTemplate(plugin)
 HEADERS += \
     mode_FeatureSegCorr.h \
     fsc_widget.h \
-	NanoKDTree3.h
+	NanoKDTree3.h \
+	GetConvexHull.h \
+	GeoDrawObjects.h
 SOURCES += \
     mode_FeatureSegCorr.cpp \
-    fsc_widget.cpp
+    fsc_widget.cpp \
+	GetConvexHull.cpp
 FORMS += \
     fsc_widget.ui
 RESOURCES += \
