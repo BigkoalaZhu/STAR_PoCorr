@@ -151,12 +151,12 @@ public:
         assert(tree);
     
         KDResults match;
-        this->k_closest(query, 1, match);
+        this->k_closest(query, 2, match);
 
         if(!match.size())
             return -1;
         else
-			return match[0].second;
+			return match[1].second;
     }
 
     Vector3& closest(double query[3]){

@@ -3,6 +3,8 @@
 #include "ModePluginDockWidget.h"
 #include "mode_FeatureSegCorr.h"
 #include "StarlabDrawArea.h"
+#include "GeoDrawObjects.h"
+#include "GetConvexHull.h"
 #include <fstream>
 
 
@@ -45,6 +47,44 @@ void FeatureSegCorr::setRadius(QString r)
 	radius = r.toDouble();
 }
 
+void FeatureSegCorr::setMaxt(QString t)
+{
+	time_sq_num = t.toDouble();
+}
+
+void FeatureSegCorr::display_t(int t)
+{
+	if(colorize_flag)
+    {
+        drawArea()->deleteAllRenderObjects();
+
+        PointSoup * ps = new PointSoup;
+		auto points = m1->vertex_coordinates();
+
+		int cout = 0;
+		double maxhks = -1;
+		double minhks = 99999;
+		foreach(Eigen::VectorXd v, HKST)
+		{
+			if(v.maxCoeff()>maxhks)
+				maxhks = v.maxCoeff();
+			if(v.minCoeff()<minhks)
+				minhks = v.minCoeff();
+		}
+        foreach(Vertex v, mesh()->vertices())
+		{
+            ps->addPoint( points[v], qtJetColorMap(HKST[t][cout],minhks,maxhks) );
+			cout++;
+		}
+        drawArea()->addRenderObject(ps);
+    }
+	/// forcefully redraw
+	{
+		drawArea()->updateGL();
+		QApplication::processEvents();
+	}
+}
+
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
 void writeToCSVfile(QString name, Eigen::MatrixXd matrix)
 {
@@ -53,8 +93,74 @@ void writeToCSVfile(QString name, Eigen::MatrixXd matrix)
 	file.close();
 }
 
+void writeToCSVfile(QString name, Eigen::VectorXd matrix)
+{
+	std::ofstream file(name.toStdString().c_str());
+	file << matrix.format(CSVFormat);
+	file.close();
+}
+
+bool readFromCSVfile(QString name, Eigen::VectorXd &matrix)
+{
+	std::ifstream file(name.toStdString().c_str());
+	if(!file)
+		return false;
+	std::string value,line;
+	QVector<double> data;
+	while(file.good())
+	{
+		while(std::getline(file,line))
+		{
+			std::istringstream stream(line);
+			while(std::getline(stream,value,','))
+			{
+				QString qstr = QString::fromStdString(value);
+				data.push_back(qstr.toDouble());
+			}
+		}
+	}
+	matrix = Eigen::VectorXd::Zero(data.size());
+	for(int i = 0; i < data.size(); i++)
+		matrix[i] = data[i];
+	file.close();
+	return true;
+}
+
+bool readFromCSVfile(QString name, Eigen::MatrixXd &matrix)
+{
+	std::ifstream file(name.toStdString().c_str());
+	if(!file)
+		return false;
+	std::string value,in,line;
+	QVector<double> data;
+	int rows = 0;
+	while(file.good())
+	{
+		while(std::getline(file,line))
+		{
+			std::istringstream stream(line);
+			while(std::getline(stream,value,','))
+			{
+				QString qstr = QString::fromStdString(value);
+				data.push_back(qstr.toDouble());
+			}
+			rows++;
+		}
+	}
+	int columns = data.size()/rows;
+	matrix = Eigen::MatrixXd::Zero(rows,columns);
+	for(int i = 0; i < rows; i++)
+		for(int j = 0; j < columns; j++)
+		{
+			matrix(i,j) = data[i*columns + j];
+		}
+	file.close();
+	return true;
+}
+
 void FeatureSegCorr::setrunCalcHKS()
 {
+	HKST.clear();
 	// Initial point cloud data to KDtree
 	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
 	Eigen::Map<Eigen::Matrix3Xd> X((double *)(m1->vertex_coordinates().data()), 3, m1->n_vertices());
@@ -104,7 +210,7 @@ void FeatureSegCorr::setrunCalcHKS()
 		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,radius);
 		std::vector<double> pointinball_dist = kdtree.ball_search_dist<Eigen::Vector3d>(pith,radius);
 		Eigen::MatrixXd pieces = Eigen::MatrixXd::Zero(piece_num,piece_layer);
-		for (int j = 1; j < pointinball.size(); j++)
+/*		for (int j = 1; j < pointinball.size(); j++)
 		{
 			Eigen::Vector3d pij = X.col(pointinball[j]) - pith;
 			pij.normalize();
@@ -130,41 +236,91 @@ void FeatureSegCorr::setrunCalcHKS()
 			}
 			double tmpv = (4.0f/3.0f)*M_PI*pow(piece_r*radius/piece_layer,3)/piece_num;
 			volume[i] = volume[i] + tmpv;
+		}*/
+		Eigen::Matrix3Xd input_points = Eigen::Matrix3Xd::Zero(3,pointinball.size()-1);
+		for (int j = 1; j < pointinball.size(); j++)
+			input_points.col(j-1) = X.col(pointinball[j]);
+		if(pointinball.size()-1 <= 3)
+		{
+			volume[i] = 0.000000001;
+			continue;
 		}
+		GetConvexHull getqhull(input_points);
+		double vvv = getqhull.getVolume();
+		volume[i] = vvv;
 	}
-	
+
 	// Calculate Laplace Operator
-	int time_sq_num = 1024;
 	double t = radius*radius/4;
 	Eigen::MatrixXd Lp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
 	for (int j = 0; j < X.cols(); j++)
+	{
 		for (int k = j; k < X.cols(); k++)
 		{
-			double dist = (X.col(j) - X.col(k)).squaredNorm();
-			double l = (-1.0f/(pow(4*M_PI*t,1.5)*t))*(volume[k]/4.0f)*exp(dist/(4.0f*t));
-			Lp(j,k) = l;
-			Lp(k,j) = Lp(j,k);
+			if(j==k)
+				continue;
+			double dist = -(X.col(j) - X.col(k)).squaredNorm();
+			double l = (1.0f/(pow(4*M_PI*t,1.5)*t))*exp(dist/(4.0f*t));
+			Lp(j,k) = l*(volume[j]/4.0f);
+			Lp(k,j) = l*(volume[k]/4.0f);
 		}
+	}
+	for (int i = 0; i < X.cols(); i++)
+	{
+		double ii = - Lp.row(i).sum();
+		Lp(i,i) = ii;
+	}
+	Eigen::MatrixXd Vlp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	for (int i = 0; i < X.cols(); i++)
+		Vlp(i,i) = 1.0f/volume[i];
+
+	Eigen::VectorXd egval;
+	Eigen::MatrixXd egvec;
+	if(!readFromCSVfile(m1->name+"_val.csv",egval)||!readFromCSVfile(m1->name+"_vec.csv",egvec))
+	{
+		Eigen::EigenSolver<Eigen::MatrixXd> esL(Lp);
+		egval = esL.eigenvalues().col(0).real();
+		egvec = esL.eigenvectors().real();
+		writeToCSVfile(m1->name+"_val.csv",egval);
+		writeToCSVfile(m1->name+"_vec.csv",egvec);
+	}
+	QVector<QPair<double, int>> eigen_sorted;
+	for (int i = 0 ; i < X.cols(); i++)
+	  eigen_sorted.push_back(QPair<double, int>(abs(egval(i)), i));
+	qSort(eigen_sorted.begin(), eigen_sorted.end());
+	for (int i = 0 ; i < X.cols(); i++)
+		eigen_sorted[i].first = -eigen_sorted[i].first;
 
 	// Calculate HKS k(x,x)
-	QVector<Eigen::VectorXd> HKST;
+	int maxEig = qMin<double>(300.0f,X.cols());
+	double tmin = abs(4*log(10) / eigen_sorted[X.cols()-1].first);
+	double tmax = abs(4*log(10) / eigen_sorted[1].first);
+	double stepsize = (log(tmax) - log(tmin)) / time_sq_num;
+	double scale = 0;
 	for (int i = 0; i < time_sq_num; i++)
 	{
-		double t = i + 1;
+		double t = i;
+		t = log(tmin) + t*stepsize;
+		t = exp(t);
 		Eigen::VectorXd HKS = Eigen::VectorXd::Zero(X.cols());
-		writeToCSVfile("m.csv",LpT[i]);
-		Eigen::EigenSolver<Eigen::MatrixXd> esL(LpT[i]);
-		Eigen::VectorXd egval = esL.eigenvalues().col(0).real();
-		Eigen::MatrixXd egvec = esL.eigenvectors().real();
 		for (int j = 0; j < X.cols(); j++)
 		{
 			double h = 0;
-			for (int n = 0; n < X.cols(); n++)
+			for (int n = 1; n < maxEig; n++)
 			{
-				h += exp(-egval(n)*t)*egvec.col(n).dot(egvec.col(n));
+				h += exp((abs(eigen_sorted[1].first)-abs(eigen_sorted[n].first))*t)*
+					egvec(j,eigen_sorted[n].second)*egvec(j,eigen_sorted[n].second);
 			}
 			HKS[j] = h;
 		}
+		scale += volume.dot(HKS);
 		HKST.push_back(HKS);
 	}
+	scale = 1.0f/scale;
+	for (int i = 0; i < HKST.size(); i++)
+	{
+		HKST[i] = HKST[i]*scale;
+//		writeToCSVfile(QString::number(i)+".csv",HKST[i]);
+	}
+	
 }

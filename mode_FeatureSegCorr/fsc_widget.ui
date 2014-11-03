@@ -23,13 +23,6 @@
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="2" column="1">
-     <widget class="QPushButton" name="calcHKS">
-      <property name="text">
-       <string>Calculate HKS Features</string>
-      </property>
-     </widget>
-    </item>
     <item row="0" column="1">
      <widget class="QCheckBox" name="colorize">
       <property name="text">
@@ -44,6 +37,33 @@
      <widget class="QLabel" name="label">
       <property name="text">
        <string>Set the neighborhood radius</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QSpinBox" name="changet"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Maxium t</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Colorize with t</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="Maxt"/>
+    </item>
+    <item row="4" column="1">
+     <widget class="QPushButton" name="calcHKS">
+      <property name="text">
+       <string>Calculate HKS Features</string>
       </property>
      </widget>
     </item>

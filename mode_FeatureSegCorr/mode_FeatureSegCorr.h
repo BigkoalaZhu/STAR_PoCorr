@@ -28,6 +28,9 @@ private:
     fsc_widget * widget;
 	bool colorize_flag;
     double radius;
+	QVector<Eigen::VectorXd> HKST;
+	int time_sq_num;
+
     Model *m1;
 	Model *m2;
 
@@ -35,6 +38,8 @@ public slots:
 	void setColorize(int);
 	void setRadius(QString);
 	void setrunCalcHKS();
+	void setMaxt(QString);
+	void display_t(int);
 };
 
 

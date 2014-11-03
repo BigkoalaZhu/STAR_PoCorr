@@ -2,6 +2,7 @@ include($$[STARLAB])
 include($$[SURFACEMESH])
 include($$[EIGEN])
 include($$[NANOFLANN])
+include($$[QHULL])
 StarlabTemplate(plugin)
 
 HEADERS += \
