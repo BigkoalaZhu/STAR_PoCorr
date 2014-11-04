@@ -79,7 +79,7 @@ void FeatureSegCorr::display_t(int t)
 		}
         drawArea()->addRenderObject(ps);
     }
-	else
+	else if(t==5)
 	{
 		drawArea()->deleteAllRenderObjects();
 
@@ -92,6 +92,26 @@ void FeatureSegCorr::display_t(int t)
         foreach(Vertex v, mesh()->vertices())
 		{
             ps->addPoint( points[v], qtJetColorMap(volume[cout],minhks,maxhks) );
+			cout++;
+		}
+        drawArea()->addRenderObject(ps);
+	}
+	else
+	{
+		drawArea()->deleteAllRenderObjects();
+
+        PointSoup * ps = new PointSoup;
+		auto points = m1->vertex_coordinates();
+
+		Eigen::VectorXd diaglp = Eigen::VectorXd::Zero(Lp.cols());
+		for(int i = 0;i<Lp.cols();i++)
+			diaglp[i] = Lp(i,i);
+		int cout = 0;
+		double maxhks = -diaglp.minCoeff();
+		double minhks = -diaglp.maxCoeff();
+        foreach(Vertex v, mesh()->vertices())
+		{
+            ps->addPoint( points[v], qtJetColorMap(-diaglp[cout],minhks,maxhks) );
 			cout++;
 		}
         drawArea()->addRenderObject(ps);
@@ -294,7 +314,7 @@ void FeatureSegCorr::setrunCalcHKS()
 
 	// Calculate Laplace Operator
 	double t = radius*radius/4;
-	Eigen::MatrixXd Lp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	Lp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
 	for (int j = 0; j < X.cols(); j++)
 	{
 		for (int k = j; k < X.cols(); k++)
@@ -364,5 +384,5 @@ void FeatureSegCorr::setrunCalcHKS()
 		HKST[i] = HKST[i]*scale;
 //		writeToCSVfile(QString::number(i)+".csv",HKST[i]);
 	}
-	
+
 }

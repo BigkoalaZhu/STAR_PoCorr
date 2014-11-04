@@ -31,6 +31,7 @@ private:
 	QVector<Eigen::VectorXd> HKST;
 	int time_sq_num;
 	Eigen::VectorXd volume;
+	Eigen::MatrixXd Lp;
 
     Model *m1;
 	Model *m2;
