@@ -10,11 +10,13 @@ HEADERS += \
     fsc_widget.h \
 	NanoKDTree3.h \
 	GetConvexHull.h \
-	GeoDrawObjects.h
+	GeoDrawObjects.h \
+	APCluster.h
 SOURCES += \
     mode_FeatureSegCorr.cpp \
     fsc_widget.cpp \
-	GetConvexHull.cpp
+	GetConvexHull.cpp \
+	APCluster.cpp
 FORMS += \
     fsc_widget.ui
 RESOURCES += \

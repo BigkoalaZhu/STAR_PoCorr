@@ -5,6 +5,7 @@
 #include "StarlabDrawArea.h"
 #include "GeoDrawObjects.h"
 #include "GetConvexHull.h"
+#include "APCluster.h"
 #include <fstream>
 
 
@@ -78,6 +79,23 @@ void FeatureSegCorr::display_t(int t)
 		}
         drawArea()->addRenderObject(ps);
     }
+	else
+	{
+		drawArea()->deleteAllRenderObjects();
+
+        PointSoup * ps = new PointSoup;
+		auto points = m1->vertex_coordinates();
+
+		int cout = 0;
+		double maxhks = volume.maxCoeff();
+		double minhks = volume.minCoeff();
+        foreach(Vertex v, mesh()->vertices())
+		{
+            ps->addPoint( points[v], qtJetColorMap(volume[cout],minhks,maxhks) );
+			cout++;
+		}
+        drawArea()->addRenderObject(ps);
+	}
 	/// forcefully redraw
 	{
 		drawArea()->updateGL();
@@ -179,11 +197,11 @@ void FeatureSegCorr::setrunCalcHKS()
 	double piece_radius = M_PI/4;
 	int piece_layer = 3;
 	int piece_num = 2*(M_PI/piece_radius)*(M_PI/piece_radius);
-	Eigen::VectorXd volume = Eigen::VectorXd::Zero(X.cols());
+	volume = Eigen::VectorXd::Zero(X.cols());
 	for (int i = 0; i < X.cols(); i++)
 	{
 		Eigen::Vector3d pith = X.col(i);
-		Eigen::Vector3d n1ith = dst_normals.col(i);
+/*		Eigen::Vector3d n1ith = dst_normals.col(i);
 		Eigen::Vector3d n2ith = Eigen::Vector3d::Zero();
 		if(abs(n1ith[0])>1.e-4&&abs(n1ith[1])>1.e-4)
 		{
@@ -205,11 +223,35 @@ void FeatureSegCorr::setrunCalcHKS()
 		}
 		n1ith.normalize();
 		n2ith.normalize();
-		Eigen::Vector3d n3ith = n1ith.cross(n2ith);
+		Eigen::Vector3d n3ith = n1ith.cross(n2ith);*/
 		//////////////////////////////////////////////////
 		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,radius);
-		std::vector<double> pointinball_dist = kdtree.ball_search_dist<Eigen::Vector3d>(pith,radius);
-		Eigen::MatrixXd pieces = Eigen::MatrixXd::Zero(piece_num,piece_layer);
+/*		if(pointinball.size()-1 <= 3)
+		{
+			volume[i] = 0.000000001;
+			continue;
+		}
+		Eigen::MatrixXd affinity = Eigen::MatrixXd::Zero(pointinball.size()-1,pointinball.size()-1);
+		for (int j = 1; j < pointinball.size(); j++)
+		{
+			for (int k = j + 1; k < pointinball.size(); k++)
+			{
+				affinity(j-1,k-1) = X.col(pointinball[j]).dot(X.col(pointinball[k]));
+			}
+			affinity(j-1,j-1) = 0;
+		}
+		double maxd = affinity.maxCoeff();
+		affinity = Eigen::MatrixXd::Ones(pointinball.size()-1,pointinball.size()-1)*maxd - affinity;
+		affinity = affinity/maxd;
+		for (int j = 1; j < pointinball.size(); j++)
+			affinity(j-1,j-1) = 0;
+		APCluster ap;
+		QVector<QVector<int>> clusters = ap.clustering(affinity);
+		int testnum = -1;
+		if(clusters.size()>1)
+			testnum = clusters[1].size();
+//		std::vector<double> pointinball_dist = kdtree.ball_search_dist<Eigen::Vector3d>(pith,radius);
+//		Eigen::MatrixXd pieces = Eigen::MatrixXd::Zero(piece_num,piece_layer);
 /*		for (int j = 1; j < pointinball.size(); j++)
 		{
 			Eigen::Vector3d pij = X.col(pointinball[j]) - pith;

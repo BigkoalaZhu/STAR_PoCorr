@@ -30,6 +30,7 @@ private:
     double radius;
 	QVector<Eigen::VectorXd> HKST;
 	int time_sq_num;
+	Eigen::VectorXd volume;
 
     Model *m1;
 	Model *m2;
