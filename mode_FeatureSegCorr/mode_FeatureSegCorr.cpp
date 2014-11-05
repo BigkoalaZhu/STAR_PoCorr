@@ -329,7 +329,7 @@ void FeatureSegCorr::setrunCalcHKS()
 		double vvv = getqhull.getVolume();
 		volume[i] = vvv;
 	}
-	double maxfx = fx.maxCoeff();
+/*	double maxfx = fx.maxCoeff();
 	for (int i = 0; i < X.cols(); i++)
 	{
 		Eigen::Vector3d pith = X.col(i);
@@ -339,7 +339,7 @@ void FeatureSegCorr::setrunCalcHKS()
 			double tmpf = fx(i,pointinball[j]);
 			fx(i,pointinball[j]) = maxfx - tmpf;
 		}
-	}
+	}*/
 //	double maxfx = 3;
 //	fx = Eigen::MatrixXd::Constant(X.cols(),X.cols(),maxfx) - fx;
 
@@ -369,7 +369,37 @@ void FeatureSegCorr::setrunCalcHKS()
 	for (int i = 0; i < X.cols(); i++)
 		Vlp(i,i) = 1.0f/volume[i];
 
-	Eigen::VectorXd egval;
+	double tmin = radius*radius/4;
+	double tmax = radius*radius;
+	double stepsize = (log(tmax) - log(tmin)) / time_sq_num;
+	for (int i = 0; i < time_sq_num; i++)
+	{
+		double ti = i;
+		ti = log(tmin) + ti*stepsize;
+		ti = exp(ti);
+		Eigen::VectorXd HKS = Eigen::VectorXd::Zero(X.cols());
+		Eigen::MatrixXd Lpti = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+		for (int j = 0; j < X.cols(); j++)
+		{
+			for (int k = j; k < X.cols(); k++)
+			{
+				if(j==k)
+					continue;
+				double dist = -(X.col(j) - X.col(k)).squaredNorm();
+				double l = (1.0f/(pow(4*M_PI*ti,1.5)*ti))*exp(dist/(4.0f*ti));
+				Lpti(j,k) = l*(ballvolume/4.0f)*fx(j,k)/numinball[j];
+				Lpti(k,j) = l*(ballvolume/4.0f)*fx(k,j)/numinball[k];
+			}
+		}
+		for (int j = 0; j < X.cols(); j++)
+		{
+			double ii = Lpti.row(j).sum();
+			HKS(j) = ii;
+		}
+		HKST.push_back(HKS);
+	}
+
+/*	Eigen::VectorXd egval;
 	Eigen::MatrixXd egvec;
 	if(!readFromCSVfile(m1->name+"_val.csv",egval)||!readFromCSVfile(m1->name+"_vec.csv",egvec))
 	{
@@ -417,5 +447,5 @@ void FeatureSegCorr::setrunCalcHKS()
 		HKST[i] = HKST[i]*scale;
 //		writeToCSVfile(QString::number(i)+".csv",HKST[i]);
 	}
-
+	*/
 }
