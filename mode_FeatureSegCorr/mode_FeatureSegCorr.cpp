@@ -206,6 +206,8 @@ void FeatureSegCorr::setrunCalcHKS()
 	SurfaceMesh::VertexCoordinatesIterator vci(m1);
     NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
 
+
+	bool has = m1->has_vertex_normals();
 	// Get Average distance
 	double avg = 0;
 	for (int i = 0; i < X.cols(); i++)
@@ -218,11 +220,16 @@ void FeatureSegCorr::setrunCalcHKS()
 	int piece_layer = 3;
 	int piece_num = 2*(M_PI/piece_radius)*(M_PI/piece_radius);
 	volume = Eigen::VectorXd::Zero(X.cols());
+	Eigen::MatrixXd fx = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	QVector<int> numinball;
 	for (int i = 0; i < X.cols(); i++)
 	{
 		Eigen::Vector3d pith = X.col(i);
-/*		Eigen::Vector3d n1ith = dst_normals.col(i);
-		Eigen::Vector3d n2ith = Eigen::Vector3d::Zero();
+		Eigen::Vector3d nith = dst_normals.col(i);
+		Eigen::Vector3d vith;
+		Eigen::Vector3d with;
+		nith.normalize();
+/*		Eigen::Vector3d n2ith = Eigen::Vector3d::Zero();
 		if(abs(n1ith[0])>1.e-4&&abs(n1ith[1])>1.e-4)
 		{
 			n2ith[0] = - 1/n1ith[0];
@@ -246,6 +253,17 @@ void FeatureSegCorr::setrunCalcHKS()
 		Eigen::Vector3d n3ith = n1ith.cross(n2ith);*/
 		//////////////////////////////////////////////////
 		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,radius);
+		std::vector<double> pointninball_dist = kdtree.ball_search_dist<Eigen::Vector3d>(pith,radius);
+		for (int j = 1; j < pointinball.size(); j++)
+		{
+			vith = nith.cross((pith - X.col(pointinball[j]))/pointninball_dist[j]);
+			with = nith.cross(vith);
+			double alph = vith.dot(dst_normals.col(pointinball[j]));
+			double fai = nith.dot((pith - X.col(pointinball[j]))/pointninball_dist[j]);
+			double cita = atan2(with.dot(dst_normals.col(pointinball[j])),nith.dot(dst_normals.col(pointinball[j])));
+			fx(i,pointinball[j]) = abs(alph) + abs(fai) + abs(cita)/M_PI;
+		}
+		numinball.push_back(pointinball.size()-1);
 /*		if(pointinball.size()-1 <= 3)
 		{
 			volume[i] = 0.000000001;
@@ -311,8 +329,22 @@ void FeatureSegCorr::setrunCalcHKS()
 		double vvv = getqhull.getVolume();
 		volume[i] = vvv;
 	}
+	double maxfx = fx.maxCoeff();
+	for (int i = 0; i < X.cols(); i++)
+	{
+		Eigen::Vector3d pith = X.col(i);
+		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,radius);
+		for (int j = 1; j < pointinball.size(); j++)
+		{
+			double tmpf = fx(i,pointinball[j]);
+			fx(i,pointinball[j]) = maxfx - tmpf;
+		}
+	}
+//	double maxfx = 3;
+//	fx = Eigen::MatrixXd::Constant(X.cols(),X.cols(),maxfx) - fx;
 
 	// Calculate Laplace Operator
+	double ballvolume = (4/3)*M_PI*pow(avg,3);
 	double t = radius*radius/4;
 	Lp = Eigen::MatrixXd::Zero(X.cols(),X.cols());
 	for (int j = 0; j < X.cols(); j++)
@@ -323,8 +355,9 @@ void FeatureSegCorr::setrunCalcHKS()
 				continue;
 			double dist = -(X.col(j) - X.col(k)).squaredNorm();
 			double l = (1.0f/(pow(4*M_PI*t,1.5)*t))*exp(dist/(4.0f*t));
-			Lp(j,k) = l*(volume[j]/4.0f);
-			Lp(k,j) = l*(volume[k]/4.0f);
+			Lp(j,k) = l*(ballvolume/4.0f)*fx(j,k)/numinball[j];
+			Lp(k,j) = l*(ballvolume/4.0f)*fx(k,j)/numinball[k];
+			//(volume[k]/4.0f)
 		}
 	}
 	for (int i = 0; i < X.cols(); i++)
@@ -354,7 +387,7 @@ void FeatureSegCorr::setrunCalcHKS()
 		eigen_sorted[i].first = -eigen_sorted[i].first;
 
 	// Calculate HKS k(x,x)
-	int maxEig = qMin<double>(300.0f,X.cols());
+	int maxEig = qMin<double>(1500.0f,X.cols());
 	double tmin = abs(4*log(10) / eigen_sorted[X.cols()-1].first);
 	double tmax = abs(4*log(10) / eigen_sorted[1].first);
 	double stepsize = (log(tmax) - log(tmin)) / time_sq_num;
