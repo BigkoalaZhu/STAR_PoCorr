@@ -11,12 +11,22 @@ HEADERS += \
 	NanoKDTree3.h \
 	GetConvexHull.h \
 	GeoDrawObjects.h \
-	APCluster.h
+	APCluster.h \
+	SelfTuningCluster\ClusterRotate.h \
+	SelfTuningCluster\Evrot.h \
+	SelfTuningCluster\Kmeans.h \
+	SelfTuningCluster\SpectralClustering.h
+	
 SOURCES += \
     mode_FeatureSegCorr.cpp \
     fsc_widget.cpp \
 	GetConvexHull.cpp \
-	APCluster.cpp
+	APCluster.cpp \
+	SelfTuningCluster\ClusterRotate.cpp \
+	SelfTuningCluster\Evrot.cpp \
+	SelfTuningCluster\Kmeans.cpp \
+	SelfTuningCluster\SpectralClustering.cpp
+	
 FORMS += \
     fsc_widget.ui
 RESOURCES += \

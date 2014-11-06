@@ -428,7 +428,10 @@ void FeatureSegCorr::setrunCalcHKS()
 		}
 		HKST.push_back(HKS);
 	}
-
+	Eigen::MatrixXd output = Eigen::MatrixXd::Zero(X.cols(),time_sq_num);
+	for(int i = 0; i<HKST.size();i++)
+		output.col(i) = HKST[i];
+	writeToCSVfile(m1->name+"_hks.csv",output);
 /*	Eigen::VectorXd egval;
 	Eigen::MatrixXd egvec;
 	if(!readFromCSVfile(m1->name+"_val.csv",egval)||!readFromCSVfile(m1->name+"_vec.csv",egvec))
@@ -482,6 +485,14 @@ void FeatureSegCorr::setrunCalcHKS()
 void FeatureSegCorr::setrunCalcCFF()
 {
 	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
+	if(HKST.size()==0)
+	{
+		Eigen::MatrixXd output;
+		readFromCSVfile(m1->name+"_hks.csv",output);
+		HKST.resize(output.cols());
+		for(int i = 0; i<output.cols();i++)
+			HKST[i] = output.col(i);
+	}
 	Eigen::Map<Eigen::Matrix3Xd> X((double *)(m1->vertex_coordinates().data()), 3, m1->n_vertices());
 	SurfaceMesh::VertexCoordinatesIterator vci(m1);
     NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
@@ -489,11 +500,17 @@ void FeatureSegCorr::setrunCalcCFF()
 	Eigen::MatrixXd DistHKS = Eigen::MatrixXd::Constant(X.cols(),X.cols(),999999.9f);
 	Eigen::MatrixXd AffinityHKS = Eigen::MatrixXd::Zero(X.cols(),X.cols());
 	Eigen::VectorXd Sig = Eigen::VectorXd::Zero(X.cols());
+	avg = 0;
+	for (int i = 0; i < X.cols(); i++)
+		avg += kdtree.closest_dist(X.col(i).data());
+	avg = avg/X.cols();
+	QVector<QPair<double,int>> p;
 	for(int i = 0; i < X.cols(); i++)
 	{
 		DistHKS(i,i) = 0;
 		Eigen::Vector3d pith = X.col(i);
 		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,avg*rcff);
+		QVector<QPair<double,int>> tmpp;
 		for(int j = 1; j < pointinball.size(); j++)
 		{
 			double d = 0;
@@ -502,9 +519,13 @@ void FeatureSegCorr::setrunCalcCFF()
 				d += pow(HKST[k][i] - HKST[k][pointinball[j]],2);
 			}
 			DistHKS(i,pointinball[j]) = d;
-			if( j == sigma )
-				Sig[i] = d;
+//			if( j == sigma )
+//				Sig[i] = sqrt(d);
+			tmpp.push_back(QPair<double,int>(d,pointinball[j]));
 		}
+		qSort(tmpp);
+		p.push_back(tmpp[ceil(tmpp.size()/2)]);
+		Sig[i] = tmpp[sigma].first;
 	}
 	for(int i = 0; i < X.cols(); i++)
 	{
@@ -513,8 +534,41 @@ void FeatureSegCorr::setrunCalcCFF()
 			if(i==j)
 				continue;
 			AffinityHKS(i,j) = exp(-DistHKS(i,j)/(Sig[i]*Sig[j]));
+			AffinityHKS(j,i) = AffinityHKS(i,j);
 		}
+		p[i].first = exp(-p[i].first/(Sig[i]*Sig[p[i].second]))/2;
 	}
+//	SpectralClustering sp(AffinityHKS,100);
+//	std::vector<std::vector<int> > clusters = sp.clusterRotate();
+	QVector<double> par_p;
+	for each(auto pair in p)
+		par_p.push_back(pair.first);
+	APCluster ap;
+	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
+	QVector<QColor> color_cluster;
+	for(int i = 0; i < clusters.size(); i++)
+		color_cluster.push_back(QColor::fromHsl(rand()%360,rand()%256,rand()%200));
+	QVector<int> clustersBypoint;
+	clustersBypoint.resize(X.cols());
+	for(int i = 0; i < clusters.size(); i++)
+		for(int j = 0; j < clusters[i].size(); j++)
+			clustersBypoint[clusters[i][j]] = i;
+	////////////////////////////////////////////////////////////
+	drawArea()->deleteAllRenderObjects();
 
+	PointSoup * ps = new PointSoup;
+	auto points = m1->vertex_coordinates();
 
+	int cout = 0;
+	foreach(Vertex v, mesh()->vertices())
+	{
+		ps->addPoint( points[v], color_cluster[clustersBypoint[cout]] );
+		cout++;
+	}
+	drawArea()->addRenderObject(ps);
+	/// forcefully redraw
+	{
+		drawArea()->updateGL();
+		QApplication::processEvents();
+	}
 }

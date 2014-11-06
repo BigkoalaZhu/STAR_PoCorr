@@ -13,6 +13,7 @@
 
 #include <vector>
 #include <Eigen/Core>
+#include <Eigen/Eigenvalues> 
 
 class SpectralClustering {
 public:

@@ -23,7 +23,7 @@ SpectralClustering::SpectralClustering(Eigen::MatrixXd& data, int numDims):
 {
 	//TODO normalise affinity matrix?
 
-	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> s(data, true);
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> s(data);
 	Eigen::VectorXd val = s.eigenvalues();
 	Eigen::MatrixXd vec = s.eigenvectors();
 

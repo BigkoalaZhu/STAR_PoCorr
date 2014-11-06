@@ -11,10 +11,11 @@ APCluster::APCluster()
 {
 }
 
-QVector<QVector<int>> APCluster::clustering(Eigen::MatrixXd affinity)
+QVector<QVector<int>> APCluster::clustering(Eigen::MatrixXd affinity,QVector<double> p)
 {
+	pre = p;
 	QVector<int> idx = getIdx(affinity);
-
+	
 	QVector<QVector<int>> clusters;
 	for (int i=0; i<idx.size(); i++)
 	{
@@ -109,7 +110,7 @@ QVector<int> APCluster::getIdx( Eigen::MatrixXd affinity )
 	}
 
 	/* Parse command line */
-	lam=0.5; maxits=500; convits=50;
+	lam=0.7; maxits=500; convits=20;
 
 	/* Find out how many data points and similarities there are */
 	n = affinity.rows();
@@ -153,7 +154,8 @@ QVector<int> APCluster::getIdx( Eigen::MatrixXd affinity )
 	/* Include a tiny amount of noise in similarities to avoid degeneracies */
 	for(j=0;j<m;j++) s[j]=s[j]+(1e-16*s[j]+MINDOUBLE*100)*(rand()/((double)RAND_MAX+1));
 
-	QVector<double> preference = getPreference(affinity);
+//	QVector<double> preference = getPreference(affinity);
+	QVector<double> preference = pre;
 	for(j=0;j<n;j++){
 		i[m+j]=j; 
 		k[m+j]=j; 
