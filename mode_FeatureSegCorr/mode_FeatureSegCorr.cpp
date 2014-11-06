@@ -6,6 +6,7 @@
 #include "GeoDrawObjects.h"
 #include "GetConvexHull.h"
 #include "APCluster.h"
+#include "SelfTuningCluster\SpectralClustering.h"
 #include <fstream>
 
 
@@ -51,6 +52,15 @@ void FeatureSegCorr::setRadius(QString r)
 void FeatureSegCorr::setMaxt(QString t)
 {
 	time_sq_num = t.toDouble();
+}
+
+void FeatureSegCorr::setRadiusIncff(QString r)
+{
+	rcff = r.toDouble();
+}
+void FeatureSegCorr::setSigma(QString s)
+{
+	sigma = s.toInt();
 }
 
 void FeatureSegCorr::display_t(int t)
@@ -206,10 +216,30 @@ void FeatureSegCorr::setrunCalcHKS()
 	SurfaceMesh::VertexCoordinatesIterator vci(m1);
     NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
 
+	///////////////////////////////////////////////// For Obj points cloud file
+	QString filename = m1->path;
+	if(filename.endsWith(".obj"))
+	{
+		std::ifstream ifs(filename.toStdString());
+		char line[1024];
+		int count = 0;
+		while(ifs.good())
+		{
+			ifs.getline(line,1024);
+			float nx,ny,nz;
+			if(strncmp(line, "vn ", 3) == 0)
+			{
+				int nread = sscanf(line, "vn %f %f %f", &nx, &ny, &nz);
+				dst_normals.col(count) = Eigen::Vector3d(nx,ny,nz);
+				count++;
+			}
+		}
+	}
+	/////////////////////////////////////////////////
 
 	bool has = m1->has_vertex_normals();
 	// Get Average distance
-	double avg = 0;
+	avg = 0;
 	for (int i = 0; i < X.cols(); i++)
 		avg += kdtree.closest_dist(X.col(i).data());
 	avg = avg/X.cols();
@@ -448,4 +478,43 @@ void FeatureSegCorr::setrunCalcHKS()
 //		writeToCSVfile(QString::number(i)+".csv",HKST[i]);
 	}
 	*/
+}
+void FeatureSegCorr::setrunCalcCFF()
+{
+	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
+	Eigen::Map<Eigen::Matrix3Xd> X((double *)(m1->vertex_coordinates().data()), 3, m1->n_vertices());
+	SurfaceMesh::VertexCoordinatesIterator vci(m1);
+    NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
+
+	Eigen::MatrixXd DistHKS = Eigen::MatrixXd::Constant(X.cols(),X.cols(),999999.9f);
+	Eigen::MatrixXd AffinityHKS = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	Eigen::VectorXd Sig = Eigen::VectorXd::Zero(X.cols());
+	for(int i = 0; i < X.cols(); i++)
+	{
+		DistHKS(i,i) = 0;
+		Eigen::Vector3d pith = X.col(i);
+		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,avg*rcff);
+		for(int j = 1; j < pointinball.size(); j++)
+		{
+			double d = 0;
+			for(int k = 0; k < time_sq_num; k++)
+			{
+				d += pow(HKST[k][i] - HKST[k][pointinball[j]],2);
+			}
+			DistHKS(i,pointinball[j]) = d;
+			if( j == sigma )
+				Sig[i] = d;
+		}
+	}
+	for(int i = 0; i < X.cols(); i++)
+	{
+		for(int j = i; j < X.cols(); j++)
+		{
+			if(i==j)
+				continue;
+			AffinityHKS(i,j) = exp(-DistHKS(i,j)/(Sig[i]*Sig[j]));
+		}
+	}
+
+
 }

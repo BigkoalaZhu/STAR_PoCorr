@@ -14,9 +14,15 @@ fsc_widget::fsc_widget(FeatureSegCorr * m) : ui(new Ui::fsc_widget)
 	mode->connect(ui->Maxt, SIGNAL(textChanged(QString)), SLOT(setMaxt(QString)));
 	mode->connect(ui->calcHKS, SIGNAL(clicked()), SLOT(setrunCalcHKS()));
 	mode->connect(ui->changet, SIGNAL(valueChanged(int)), SLOT(display_t(int)));
+	mode->connect(ui->CFF, SIGNAL(clicked()), SLOT(setrunCalcCFF()));
 
-	ui->radius->setText("5");
+	mode->connect(ui->radiusIncff, SIGNAL(textChanged(QString)), SLOT(setRadiusIncff(QString)));
+	mode->connect(ui->Sigma, SIGNAL(textChanged(QString)), SLOT(setSigma(QString)));
+
+	ui->radius->setText("30");
 	ui->Maxt->setText("128");
+	ui->radiusIncff->setText("3");
+	ui->Sigma->setText("5");
 	ui->colorize->setChecked(true);
 	
 }

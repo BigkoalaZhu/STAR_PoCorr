@@ -32,9 +32,11 @@ private:
 	int time_sq_num;
 	Eigen::VectorXd volume;
 	Eigen::MatrixXd Lp;
+	double avg;
+	double rcff;
+	int sigma;
 
     Model *m1;
-	Model *m2;
 
 public slots:
 	void setColorize(int);
@@ -42,6 +44,9 @@ public slots:
 	void setrunCalcHKS();
 	void setMaxt(QString);
 	void display_t(int);
+	void setrunCalcCFF();
+	void setRadiusIncff(QString);
+	void setSigma(QString);
 };
 
 
