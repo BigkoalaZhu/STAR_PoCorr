@@ -7,6 +7,7 @@
 #include "GetConvexHull.h"
 #include "APCluster.h"
 #include "SelfTuningCluster\SpectralClustering.h"
+#include "SelfTuningCluster\Kmeans.h"
 #include <fstream>
 
 
@@ -511,10 +512,11 @@ void FeatureSegCorr::setrunCalcCFF()
 		Eigen::Vector3d pith = X.col(i);
 		std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,avg*rcff);
 		QVector<QPair<double,int>> tmpp;
-		for(int j = 1; j < pointinball.size(); j++)
+		int scaledr = qMin<int>(sigma,pointinball.size());
+		for(int j = 1; j < scaledr; j++)
 		{
 			double d = 0;
-			for(int k = 0; k < time_sq_num; k++)
+			for(int k = 0; k < 5; k++)
 			{
 				d += pow(HKST[k][i] - HKST[k][pointinball[j]],2);
 			}
@@ -525,7 +527,7 @@ void FeatureSegCorr::setrunCalcCFF()
 		}
 		qSort(tmpp);
 		p.push_back(tmpp[ceil(tmpp.size()/2)]);
-		Sig[i] = tmpp[sigma].first;
+		Sig[i] = tmpp[scaledr-1].first;
 	}
 	for(int i = 0; i < X.cols(); i++)
 	{
@@ -536,7 +538,7 @@ void FeatureSegCorr::setrunCalcCFF()
 			AffinityHKS(i,j) = exp(-DistHKS(i,j)/(Sig[i]*Sig[j]));
 			AffinityHKS(j,i) = AffinityHKS(i,j);
 		}
-		p[i].first = exp(-p[i].first/(Sig[i]*Sig[p[i].second]))/2;
+		p[i].first = exp(-p[i].first/(Sig[i]*Sig[p[i].second]))/10;
 	}
 //	SpectralClustering sp(AffinityHKS,100);
 //	std::vector<std::vector<int> > clusters = sp.clusterRotate();
@@ -544,15 +546,20 @@ void FeatureSegCorr::setrunCalcCFF()
 	for each(auto pair in p)
 		par_p.push_back(pair.first);
 	APCluster ap;
-	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
+//	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
 	QVector<QColor> color_cluster;
+	Kmeans km;
+	std::vector<std::vector<int> > clusters = km.cluster(AffinityHKS,10);
 	for(int i = 0; i < clusters.size(); i++)
 		color_cluster.push_back(QColor::fromHsl(rand()%360,rand()%256,rand()%200));
 	QVector<int> clustersBypoint;
 	clustersBypoint.resize(X.cols());
 	for(int i = 0; i < clusters.size(); i++)
+	{
+		QMessageBox::warning(NULL,"c",QString::number(clusters[i].size()));
 		for(int j = 0; j < clusters[i].size(); j++)
 			clustersBypoint[clusters[i][j]] = i;
+	}
 	////////////////////////////////////////////////////////////
 	drawArea()->deleteAllRenderObjects();
 
@@ -571,4 +578,5 @@ void FeatureSegCorr::setrunCalcCFF()
 		drawArea()->updateGL();
 		QApplication::processEvents();
 	}
+	QMessageBox::warning(NULL,"c",QString::number(clusters.size()));
 }
