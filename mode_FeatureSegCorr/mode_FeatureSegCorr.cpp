@@ -527,7 +527,8 @@ void FeatureSegCorr::setrunCalcCFF()
 		}
 		qSort(tmpp);
 		p.push_back(tmpp[ceil(tmpp.size()/2)]);
-		Sig[i] = tmpp[scaledr-1].first;
+//		p.push_back(QPair<double,int>(HKST[0][i],0));
+		Sig[i] = sqrt(tmpp[scaledr-2].first);
 	}
 	for(int i = 0; i < X.cols(); i++)
 	{
@@ -535,28 +536,91 @@ void FeatureSegCorr::setrunCalcCFF()
 		{
 			if(i==j)
 				continue;
-			AffinityHKS(i,j) = exp(-DistHKS(i,j)/(Sig[i]*Sig[j]));
-			AffinityHKS(j,i) = AffinityHKS(i,j);
+			double aff = exp(-DistHKS(i,j)/(Sig[i]*Sig[j]));
+			if(aff>0.4)
+			{
+				AffinityHKS(i,j) = aff;
+				AffinityHKS(j,i) = AffinityHKS(i,j);
+			}
+			else
+			{
+				AffinityHKS(i,j) = 0;
+				AffinityHKS(j,i) = AffinityHKS(i,j);
+			}
+
 		}
-		p[i].first = exp(-p[i].first/(Sig[i]*Sig[p[i].second]))/10;
+		p[i].first = exp(-p[i].first/(Sig[i]*Sig[p[i].second]));
 	}
+
+	////////////////////////////////////////// propagation
+	for(int i = 0; i < X.cols(); i++)
+	{
+		int max_index,tmp;
+		Eigen::VectorXd flag = Eigen::VectorXd::Zero(X.cols());
+		flag[0] = 1;
+
+		while(flag.sum() != X.cols())
+		{
+			Eigen::VectorXd tmprow = AffinityHKS.row(i);
+			double maxtmp;
+			do{
+				maxtmp = tmprow.maxCoeff(&max_index,&tmp);
+				tmprow[max_index] = -1;
+			}while(flag[max_index]==1);
+			if(maxtmp <= 0.05)
+				break;
+			flag[max_index] = 1;
+			#pragma omp parallel for
+			for(int j = i + 1; j < X.cols(); j++)
+			{
+				if(AffinityHKS(i,j) < AffinityHKS(i,max_index)*AffinityHKS(max_index,j))
+					AffinityHKS(i,j) = AffinityHKS(i,max_index)*AffinityHKS(max_index,j);
+			}
+		}
+		for(int j = i + 1; j < X.cols(); j++)
+			AffinityHKS(j,i) = AffinityHKS(i,j);
+	}
+	//////////////////////////////////////////
+	writeToCSVfile(m1->name+"_aff.csv",AffinityHKS);
+	writeToCSVfile(m1->name+"_Dist.csv",DistHKS);
 //	SpectralClustering sp(AffinityHKS,100);
 //	std::vector<std::vector<int> > clusters = sp.clusterRotate();
+	////////////////////////////////////////////////////
 	QVector<double> par_p;
+/*	double maxp = 0;
+	double minp = 99999999999999;
 	for each(auto pair in p)
+	{
+		if(maxp < pair.first)
+			maxp = pair.first;
+		if(minp > pair.first)
+			minp = pair.first;
 		par_p.push_back(pair.first);
+	}
+	for(int i = 0; i < par_p.size(); i++)
+		par_p[i] = (1.0f/(maxp-minp))*(par_p[i] - minp);*/
+	for(int i = 0; i < X.cols(); i++)
+	{
+		QVector<double> tmpq;
+		for(int j = 0; j < X.cols(); j++)
+			tmpq.push_back(AffinityHKS(i,j));
+		qSort(tmpq);
+		par_p.push_back(tmpq[ceil(tmpq.size()/2)]);
+	}
+	///////////////////////////////////////////////////
 	APCluster ap;
-//	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
+	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
 	QVector<QColor> color_cluster;
 	Kmeans km;
-	std::vector<std::vector<int> > clusters = km.cluster(AffinityHKS,10);
+//	std::vector<std::vector<int> > clusters = km.cluster(AffinityHKS,20);
 	for(int i = 0; i < clusters.size(); i++)
-		color_cluster.push_back(QColor::fromHsl(rand()%360,rand()%256,rand()%200));
+		color_cluster.push_back(QColor(rand()%255,rand()%255,rand()%255));
 	QVector<int> clustersBypoint;
 	clustersBypoint.resize(X.cols());
+	QMessageBox::warning(NULL,"c",QString::number(clusters.size()));
 	for(int i = 0; i < clusters.size(); i++)
 	{
-		QMessageBox::warning(NULL,"c",QString::number(clusters[i].size()));
+//		QMessageBox::warning(NULL,"c",QString::number(clusters[i].size()));
 		for(int j = 0; j < clusters[i].size(); j++)
 			clustersBypoint[clusters[i][j]] = i;
 	}
@@ -578,5 +642,4 @@ void FeatureSegCorr::setrunCalcCFF()
 		drawArea()->updateGL();
 		QApplication::processEvents();
 	}
-	QMessageBox::warning(NULL,"c",QString::number(clusters.size()));
 }
