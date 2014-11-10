@@ -15,6 +15,7 @@ fsc_widget::fsc_widget(FeatureSegCorr * m) : ui(new Ui::fsc_widget)
 	mode->connect(ui->calcHKS, SIGNAL(clicked()), SLOT(setrunCalcHKS()));
 	mode->connect(ui->changet, SIGNAL(valueChanged(int)), SLOT(display_t(int)));
 	mode->connect(ui->CFF, SIGNAL(clicked()), SLOT(setrunCalcCFF()));
+	mode->connect(ui->cff_2, SIGNAL(clicked()), SLOT(setrunCalcCFF2()));
 
 	mode->connect(ui->radiusIncff, SIGNAL(textChanged(QString)), SLOT(setRadiusIncff(QString)));
 	mode->connect(ui->Sigma, SIGNAL(textChanged(QString)), SLOT(setSigma(QString)));

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>441</width>
-    <height>368</height>
+    <height>462</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>10</x>
      <y>10</y>
      <width>421</width>
-     <height>331</height>
+     <height>361</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
@@ -40,20 +40,17 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QSpinBox" name="changet"/>
+    <item row="7" column="1">
+     <widget class="QPushButton" name="CFF">
+      <property name="text">
+       <string>Get Affinity</string>
+      </property>
+     </widget>
     </item>
     <item row="2" column="0">
      <widget class="QLabel" name="label_3">
       <property name="text">
        <string>Maxium t</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Colorize with t</string>
       </property>
      </widget>
     </item>
@@ -67,15 +64,25 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="1">
-     <widget class="QPushButton" name="CFF">
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_5">
       <property name="text">
-       <string>Cluster Feature Field</string>
+       <string>Sigma</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Colorize with t</string>
       </property>
      </widget>
     </item>
     <item row="4" column="1">
      <widget class="QLineEdit" name="radiusIncff"/>
+    </item>
+    <item row="3" column="1">
+     <widget class="QSpinBox" name="changet"/>
     </item>
     <item row="5" column="1">
      <widget class="QLineEdit" name="Sigma"/>
@@ -87,10 +94,10 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_5">
+    <item row="8" column="1">
+     <widget class="QPushButton" name="cff_2">
       <property name="text">
-       <string>Sigma</string>
+       <string>Cluster Feature Field</string>
       </property>
      </widget>
     </item>

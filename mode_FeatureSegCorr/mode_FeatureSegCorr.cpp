@@ -583,9 +583,15 @@ void FeatureSegCorr::setrunCalcCFF()
 	//////////////////////////////////////////
 	writeToCSVfile(m1->name+"_aff.csv",AffinityHKS);
 	writeToCSVfile(m1->name+"_Dist.csv",DistHKS);
-//	SpectralClustering sp(AffinityHKS,100);
-//	std::vector<std::vector<int> > clusters = sp.clusterRotate();
+
+}
+void FeatureSegCorr::setrunCalcCFF2()
+{
 	////////////////////////////////////////////////////
+	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
+	Eigen::Map<Eigen::Matrix3Xd> X((double *)(m1->vertex_coordinates().data()), 3, m1->n_vertices());
+	Eigen::MatrixXd AffinityHKS = Eigen::MatrixXd::Zero(X.cols(),X.cols());
+	readFromCSVfile(m1->name+"_aff.csv",AffinityHKS);
 	QVector<double> par_p;
 /*	double maxp = 0;
 	double minp = 99999999999999;
@@ -605,9 +611,11 @@ void FeatureSegCorr::setrunCalcCFF()
 		for(int j = 0; j < X.cols(); j++)
 			tmpq.push_back(AffinityHKS(i,j));
 		qSort(tmpq);
-		par_p.push_back(tmpq[ceil(tmpq.size()/2)]);
+		par_p.push_back(tmpq[ceil(tmpq.size()/2)]/3);
 	}
 	///////////////////////////////////////////////////
+//	SpectralClustering sp(AffinityHKS,100);
+//	std::vector<std::vector<int> > clusters = sp.clusterRotate();
 	APCluster ap;
 	QVector<QVector<int>> clusters = ap.clustering(AffinityHKS,par_p);
 	QVector<QColor> color_cluster;
@@ -617,13 +625,71 @@ void FeatureSegCorr::setrunCalcCFF()
 		color_cluster.push_back(QColor(rand()%255,rand()%255,rand()%255));
 	QVector<int> clustersBypoint;
 	clustersBypoint.resize(X.cols());
-	QMessageBox::warning(NULL,"c",QString::number(clusters.size()));
 	for(int i = 0; i < clusters.size(); i++)
 	{
 //		QMessageBox::warning(NULL,"c",QString::number(clusters[i].size()));
 		for(int j = 0; j < clusters[i].size(); j++)
 			clustersBypoint[clusters[i][j]] = i;
 	}
+	Eigen::VectorXd idx = Eigen::VectorXd::Zero(X.cols());
+	readFromCSVfile("1.csv",idx);
+	////////////////////////////////////////////////////////////Get relationship between fields
+	Eigen::MatrixXd RelationCluster = Eigen::MatrixXd::Zero(clusters.size(),clusters.size());
+	SurfaceMesh::VertexCoordinatesIterator vci(m1);
+    NanoKDTree3<Vector3> kdtree(vci.begin(), vci.end());
+	avg = 0;
+	for (int i = 0; i < X.cols(); i++)
+		avg += kdtree.closest_dist(X.col(i).data());
+	avg = avg/X.cols();
+	for(int i = 0; i < clusters.size(); i++)
+	{
+		for(int j = 0; j < clusters[i].size(); j++)
+		{
+			Eigen::Vector3d pith = X.col(clusters[i][j]);
+			std::vector<size_t> pointinball = kdtree.ball_search<Eigen::Vector3d>(pith,avg*rcff);
+			for each(size_t idx in pointinball)
+			{
+				RelationCluster(i,clustersBypoint[idx]) = 1;
+				RelationCluster(clustersBypoint[idx],i) = 1;
+			}
+		}
+	}
+	Eigen::VectorXd clusters_idx = Eigen::VectorXd::Zero(clusters.size());
+	Eigen::VectorXd clusters_idx_flag = Eigen::VectorXd::Zero(clusters.size());
+	Eigen::VectorXd clusters_combine_idx = Eigen::VectorXd::Zero(clusters.size());
+	for(int i = 0; i < clusters.size(); i++)
+	{
+		double count = 0;
+		for(int j = 0; j < clusters[i].size(); j++)
+		{
+			count += idx[clusters[i][j]] - 1;
+		}
+		count = count/clusters[i].size();
+		if(count > 0.5)
+			clusters_idx[i] = 1;
+	}
+	int count_cluster = 0;
+	for(int i = 0; i < clusters.size(); i++)
+	{
+		if(clusters_idx_flag[i] == 0)
+		{
+			clusters_combine_idx[i] = count_cluster;
+			count_cluster++;
+		}
+		for(int j = 0; j < clusters.size(); j++)
+		{
+			if(i==j)
+				continue;
+			int flag = 0;
+			if(clusters_idx[i] == clusters_idx[j] && RelationCluster(i,j) == 1)
+			{
+				clusters_combine_idx[j] = clusters_combine_idx[i];
+				clusters_idx_flag[j] = 1;
+				continue;
+			}
+		}
+	}
+	QMessageBox::warning(NULL,"c",QString::number(count_cluster));
 	////////////////////////////////////////////////////////////
 	drawArea()->deleteAllRenderObjects();
 
@@ -633,7 +699,8 @@ void FeatureSegCorr::setrunCalcCFF()
 	int cout = 0;
 	foreach(Vertex v, mesh()->vertices())
 	{
-		ps->addPoint( points[v], color_cluster[clustersBypoint[cout]] );
+		ps->addPoint( points[v], color_cluster[clusters_combine_idx[clustersBypoint[cout]]] );
+	//	ps->addPoint( points[v], color_cluster[idx[cout]] );
 		cout++;
 	}
 	drawArea()->addRenderObject(ps);

@@ -45,6 +45,7 @@ public slots:
 	void setMaxt(QString);
 	void display_t(int);
 	void setrunCalcCFF();
+	void setrunCalcCFF2();
 	void setRadiusIncff(QString);
 	void setSigma(QString);
 };
