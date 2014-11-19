@@ -5,6 +5,8 @@
 #include "fsc_widget.h"
 #include "NanoKDTree3.h"
 
+enum SELECT_MODE{ADD, REMOVE, NONE};
+
 class FeatureSegCorr : public SurfaceMeshModePlugin{
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "fcs.plugin.starlab")
@@ -21,6 +23,7 @@ public:
 
     void decorate();
 	void update();
+	void drawWithNames();
 
     /// User interactions
 
@@ -37,6 +40,22 @@ private:
 	int sigma;
 
     Model *m1;
+	////////////////////////////////////label
+	int gn;
+	int curgn;
+	QVector<QSet<int>> group;
+
+	bool endSelection(const QPoint& p);
+
+	Vector3VertexProperty points;
+    Vector3FaceProperty fnormals;
+
+	QPoint cursorPos;
+	int brushSize;
+	SELECT_MODE selectMode;
+	bool isDrawBrushSize;
+	bool wheelEvent(QWheelEvent *);
+    bool mouseMoveEvent(QMouseEvent*);
 
 public slots:
 	void setColorize(int);
@@ -48,6 +67,10 @@ public slots:
 	void setrunCalcCFF2();
 	void setRadiusIncff(QString);
 	void setSigma(QString);
+	/////////////////////////////////////label
+	void setlabel_gn(QString);
+	void setlabel_ith(int);
+	void setlabel_gn_confirm();
 };
 
 

@@ -26,6 +26,10 @@ fsc_widget::fsc_widget(FeatureSegCorr * m) : ui(new Ui::fsc_widget)
 	ui->Sigma->setText("5");
 	ui->colorize->setChecked(true);
 	
+	/////////////////////////////////////////////////////////Label
+	mode->connect(ui->label_gn, SIGNAL(textChanged(QString)), SLOT(setlabel_gn(QString)));
+	mode->connect(ui->label_ith, SIGNAL(valueChanged(int)), SLOT(setlabel_ith(int)));
+	mode->connect(ui->label_confirm, SIGNAL(clicked()), SLOT(setlabel_gn_confirm()));
 }
 
 fsc_widget::~fsc_widget()

@@ -8,9 +8,32 @@
 #include "APCluster.h"
 #include "SelfTuningCluster\SpectralClustering.h"
 #include "SelfTuningCluster\Kmeans.h"
+#include <qgl.h>
 #include <fstream>
 
+void DrawCircle(float cx, float cy, float r){
+    int num_segments = 10 * sqrtf(r);
 
+    float theta = 2 * 3.1415926 / float(num_segments);
+    float c = cosf(theta);//precalculate the sine and cosine
+    float s = sinf(theta);
+    float t;
+
+    float x = r;//we start at angle = 0
+    float y = 0;
+
+    glBegin(GL_LINE_LOOP);
+    for(int ii = 0; ii < num_segments; ii++)
+    {
+        glVertex2f(x + cx, y + cy);//output vertex
+
+        //apply the rotation matrix
+        t = x;
+        x = c * x - s * y;
+        y = s * t + c * y;
+    }
+    glEnd();
+}
 
 FeatureSegCorr::FeatureSegCorr()
 {
@@ -27,17 +50,145 @@ void FeatureSegCorr::create()
         dockwidget->setWidget(widget);
         mainWindow()->addDockWidget(Qt::RightDockWidgetArea,dockwidget);
     }
+
+	brushSize = 10;
+	isDrawBrushSize = false;
+	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
+	group.resize(0);
     update();
 }
 
 void FeatureSegCorr::update()
 {
+	points = m1->vertex_property<Vector3>(VPOINT);
+    fnormals = m1->face_property<Vector3>(FNORMAL);
+}
 
+void FeatureSegCorr::drawWithNames()
+{
+    double vt = 0;
+
+	qglviewer::Vec viewDir = drawArea()->camera()->viewDirection().unit();
+    Vector3 cameraNormal(viewDir[0],viewDir[1],viewDir[2]);
+
+    foreach(Face f, mesh()->faces())
+    {
+        if(dot(fnormals[f], cameraNormal) > vt) continue;
+
+        glPushName(f.idx());
+        glBegin(GL_POLYGON);
+        Surface_mesh::Vertex_around_face_circulator vit, vend;
+        vit = vend = mesh()->vertices(f);
+        do{ glVertex3dv(points[vit].data()); } while(++vit != vend);
+        glEnd();
+        glPopName();
+    }
+}
+
+bool FeatureSegCorr::endSelection(const QPoint &)
+{
+    glFlush();
+    GLint nbHits = glRenderMode(GL_RENDER);
+
+    QSet<int> selection;
+
+    if (nbHits > 0)
+        for (int i=0; i<nbHits; ++i)
+            selection.insert((drawArea()->selectBuffer())[4*i+3]);
+
+	foreach(int idx, selection){
+		if(selectMode == ADD){
+			group[curgn].insert(idx);
+		}
+		if(selectMode == REMOVE){
+			group[curgn].remove(idx);
+		}
+    }
+
+    return true;
+}
+
+bool FeatureSegCorr::wheelEvent(QWheelEvent * e)
+{
+    cursorPos = e->pos();
+    if(e->modifiers() == Qt::NoButton) return false;
+
+    double s = e->delta() / 120.0;
+    brushSize += s;
+
+    drawArea()->setSelectRegionHeight(brushSize);
+    drawArea()->setSelectRegionWidth(brushSize);
+
+    isDrawBrushSize = true;
+    drawArea()->updateGL();
+
+    return false;
+}
+
+bool FeatureSegCorr::mouseMoveEvent(QMouseEvent * e)
+{
+    cursorPos = e->pos();
+    if(e->modifiers() == Qt::NoButton) return false;
+
+    if(e->buttons() & Qt::LeftButton)   selectMode = ADD;
+    if(e->buttons() & Qt::RightButton)  selectMode = REMOVE;
+
+    drawArea()->select(e->pos());
+    isDrawBrushSize = true;
+
+    drawArea()->updateGL();
+    return true;
 }
 
 void FeatureSegCorr::decorate()
 {
-    
+    glEnable(GL_LIGHTING);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-10, 10);
+
+	if(group.size()!=0)
+	{
+		foreach(int idx, group[curgn]){
+			glColor3d(0,1,0);
+
+			Face f(idx);
+			glBegin(GL_POLYGON);
+			glNormal3dv(fnormals[f].data());
+			Surface_mesh::Vertex_around_face_circulator vit, vend;
+			vit = vend = mesh()->vertices(f);
+			do{ glVertex3dv(points[vit].data()); } while(++vit != vend);
+			glEnd();
+		}
+		glDisable(GL_POLYGON_OFFSET_FILL);
+
+		// Visualize brush size
+		if(isDrawBrushSize)
+		{
+			drawArea()->startScreenCoordinatesSystem();
+			glDisable(GL_LIGHTING);
+			glColor4d(1,1,1,0.5);
+			glLineWidth(1.0f);
+			DrawCircle(cursorPos.x(), cursorPos.y(), brushSize);
+			drawArea()->stopScreenCoordinatesSystem();
+		}
+	}
+
+    glEnable(GL_LIGHTING);
+}
+
+void FeatureSegCorr::setlabel_gn(QString c)
+{
+	gn = c.toInt();
+}
+
+void FeatureSegCorr::setlabel_ith(int c)
+{
+	curgn = c - 1;
+}
+
+void FeatureSegCorr::setlabel_gn_confirm()
+{
+	group.resize(gn);
 }
 
 void FeatureSegCorr::setColorize(int c)
