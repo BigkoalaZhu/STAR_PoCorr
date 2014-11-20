@@ -43,7 +43,10 @@ private:
 	////////////////////////////////////label
 	int gn;
 	int curgn;
-	QVector<QSet<int>> group;
+	int curpn;
+	bool showlabels;
+	QVector<QVector<QSet<int>>> group;
+	QString pn_number;
 
 	bool endSelection(const QPoint& p);
 
@@ -69,8 +72,12 @@ public slots:
 	void setSigma(QString);
 	/////////////////////////////////////label
 	void setlabel_gn(QString);
+	void setlabel_pn(QString);
 	void setlabel_ith(int);
+	void setlabel_ith_pn(int);
 	void setlabel_gn_confirm();
+	void setlabel_output();
+	void setlabel_show(int);
 };
 
 

@@ -51,6 +51,7 @@ void FeatureSegCorr::create()
         mainWindow()->addDockWidget(Qt::RightDockWidgetArea,dockwidget);
     }
 
+	showlabels = false;
 	brushSize = 10;
 	isDrawBrushSize = false;
 	m1 = SurfaceMesh::safe_cast(document()->selectedModel());
@@ -98,10 +99,10 @@ bool FeatureSegCorr::endSelection(const QPoint &)
 
 	foreach(int idx, selection){
 		if(selectMode == ADD){
-			group[curgn].insert(idx);
+			group[curgn][curpn].insert(idx);
 		}
 		if(selectMode == REMOVE){
-			group[curgn].remove(idx);
+			group[curgn][curpn].remove(idx);
 		}
     }
 
@@ -148,17 +149,37 @@ void FeatureSegCorr::decorate()
 
 	if(group.size()!=0)
 	{
-		foreach(int idx, group[curgn]){
-			glColor3d(0,1,0);
+		if(showlabels)
+		{
+			for(int i = 0; i < group[curgn].size(); i++){
+			foreach(int idx, group[curgn][i]){
+				glColor3d(0,1,0);
 
-			Face f(idx);
-			glBegin(GL_POLYGON);
-			glNormal3dv(fnormals[f].data());
-			Surface_mesh::Vertex_around_face_circulator vit, vend;
-			vit = vend = mesh()->vertices(f);
-			do{ glVertex3dv(points[vit].data()); } while(++vit != vend);
-			glEnd();
+				Face f(idx);
+				glBegin(GL_POLYGON);
+				glNormal3dv(fnormals[f].data());
+				Surface_mesh::Vertex_around_face_circulator vit, vend;
+				vit = vend = mesh()->vertices(f);
+				do{ glVertex3dv(points[vit].data()); } while(++vit != vend);
+				glEnd();
+			}
+			}
 		}
+		else
+		{
+			foreach(int idx, group[curgn][curpn]){
+				glColor3d(0,1,0);
+
+				Face f(idx);
+				glBegin(GL_POLYGON);
+				glNormal3dv(fnormals[f].data());
+				Surface_mesh::Vertex_around_face_circulator vit, vend;
+				vit = vend = mesh()->vertices(f);
+				do{ glVertex3dv(points[vit].data()); } while(++vit != vend);
+				glEnd();
+			}
+		}
+		
 		glDisable(GL_POLYGON_OFFSET_FILL);
 
 		// Visualize brush size
@@ -176,9 +197,20 @@ void FeatureSegCorr::decorate()
     glEnable(GL_LIGHTING);
 }
 
+void FeatureSegCorr::setlabel_show(int c)
+{
+	showlabels = c;
+	drawArea()->updateGL();
+}
+
 void FeatureSegCorr::setlabel_gn(QString c)
 {
 	gn = c.toInt();
+}
+
+void FeatureSegCorr::setlabel_pn(QString c)
+{
+	pn_number = c;
 }
 
 void FeatureSegCorr::setlabel_ith(int c)
@@ -186,9 +218,36 @@ void FeatureSegCorr::setlabel_ith(int c)
 	curgn = c - 1;
 }
 
+void FeatureSegCorr::setlabel_ith_pn(int c)
+{
+	curpn = c - 1;
+	drawArea()->updateGL();
+}
+
 void FeatureSegCorr::setlabel_gn_confirm()
 {
 	group.resize(gn);
+	QStringList numbers = pn_number.split(",");
+	for(int i = 0; i < numbers.size(); i++)
+		group[i].resize(numbers[i].toInt());
+}
+
+void FeatureSegCorr::setlabel_output()
+{
+	std::ofstream ofs((m1->name+"labels.lb").toStdString());
+	for each(auto g in group)
+	{
+		ofs<<"g"<<endl;
+		for each(auto p in g)
+		{
+			foreach (const int &idx,p)
+			{
+				ofs<<idx<<" ";
+			}
+			ofs<<endl;
+		}
+	}
+	ofs.close();
 }
 
 void FeatureSegCorr::setColorize(int c)

@@ -126,6 +126,9 @@
     </rect>
    </property>
    <layout class="QFormLayout" name="formLayout">
+    <property name="fieldGrowthPolicy">
+     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+    </property>
     <item row="0" column="0">
      <widget class="QLineEdit" name="label_gn"/>
     </item>
@@ -137,12 +140,12 @@
      </widget>
     </item>
     <item row="1" column="0">
-     <widget class="QSpinBox" name="label_ith"/>
+     <widget class="QLineEdit" name="label_pn"/>
     </item>
     <item row="1" column="1">
-     <widget class="QLabel" name="label_8">
+     <widget class="QLabel" name="label_9">
       <property name="text">
-       <string>ith group</string>
+       <string>Pattern number</string>
       </property>
      </widget>
     </item>
@@ -150,6 +153,40 @@
      <widget class="QPushButton" name="label_confirm">
       <property name="text">
        <string>confirm group number</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QSpinBox" name="label_ith"/>
+    </item>
+    <item row="4" column="1">
+     <widget class="QLabel" name="label_8">
+      <property name="text">
+       <string>ith group</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="0">
+     <widget class="QSpinBox" name="label_ith_pn"/>
+    </item>
+    <item row="5" column="1">
+     <widget class="QLabel" name="label_10">
+      <property name="text">
+       <string>ith pattern</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0" colspan="2">
+     <widget class="QPushButton" name="label_output">
+      <property name="text">
+       <string>Output labels</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0" colspan="2">
+     <widget class="QCheckBox" name="label_show">
+      <property name="text">
+       <string>Show labels</string>
       </property>
      </widget>
     </item>

@@ -28,8 +28,13 @@ fsc_widget::fsc_widget(FeatureSegCorr * m) : ui(new Ui::fsc_widget)
 	
 	/////////////////////////////////////////////////////////Label
 	mode->connect(ui->label_gn, SIGNAL(textChanged(QString)), SLOT(setlabel_gn(QString)));
+	mode->connect(ui->label_pn, SIGNAL(textChanged(QString)), SLOT(setlabel_pn(QString)));
 	mode->connect(ui->label_ith, SIGNAL(valueChanged(int)), SLOT(setlabel_ith(int)));
+	mode->connect(ui->label_ith_pn, SIGNAL(valueChanged(int)), SLOT(setlabel_ith_pn(int)));
 	mode->connect(ui->label_confirm, SIGNAL(clicked()), SLOT(setlabel_gn_confirm()));
+	mode->connect(ui->label_output, SIGNAL(clicked()), SLOT(setlabel_output()));
+
+	mode->connect(ui->label_show, SIGNAL(stateChanged(int)), SLOT(setlabel_show(int)));
 }
 
 fsc_widget::~fsc_widget()
